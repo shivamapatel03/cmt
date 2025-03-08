@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cow Monitoring Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --danger-color: #f44336;
+            --warning-color: #ff9800;
+            --success-color: #8bc34a;
+            --info-color: #2196f3;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dashboard-container {
+            padding: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            transition: transform 0.3s ease;
+        }
+
+        .status-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .status-card h3 {
+            margin: 0;
+            color: #333;
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+        }
+
+        .status-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .status-label {
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            height: 400px;
+        }
+
+        #map {
+            height: 400px;
+            border-radius: 15px;
+        }
+
+        .alert-panel {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .alert-item {
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            background: #fff;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .alert-item.critical {
+            border-left-color: var(--danger-color);
+            background: rgba(244, 67, 54, 0.1);
+        }
+
+        .alert-item.high {
+            border-left-color: var(--warning-color);
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        .alert-item.medium {
+            border-left-color: var(--info-color);
+            background: rgba(33, 150, 243, 0.1);
+        }
+
+        .health-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .health-score {
+            font-size: 3rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .behavior-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .behavior-timeline {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding: 10px 0;
+            position: relative;
+        }
+
+        .timeline-point {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            position: relative;
+        }
+
+        .timeline-point::after {
+            content: attr(data-time);
+            position: absolute;
+            top: 25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.8rem;
+        }
+
+        .timeline-line {
+            position: absolute;
+            top: 20px;
+            left: 10px;
+            right: 10px;
+            height: 2px;
+            background: #ddd;
+            z-index: -1;
+        }
+
+        .recommendation-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .recommendation-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .recommendation-item {
+            padding: 10px;
+            border-left: 4px solid var(--primary-color);
+            margin-bottom: 10px;
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .recommendation-item.high {
+            border-left-color: var(--danger-color);
+            background: rgba(244, 67, 54, 0.1);
+        }
+
+        .recommendation-item.medium {
+            border-left-color: var(--warning-color);
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-container {
+                padding: 10px;
+            }
+
+            .status-value {
+                font-size: 1.5rem;
+            }
+
+            .chart-container {
+                height: 300px;
+            }
+
+            #map {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="text-center mb-4">Cow Monitoring Dashboard</h1>
+            </div>
+        </div>
+
+        <!-- Status Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="status-card">
+                    <h3><i class="fas fa-thermometer-half"></i> Temperature</h3>
+                    <div class="status-value" id="temperature">--°C</div>
+                    <div class="status-label">Normal Range: 37.5°C - 39.5°C</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="status-card">
+                    <h3><i class="fas fa-running"></i> Motion Level</h3>
+                    <div class="status-value" id="motion">--g</div>
+                    <div class="status-label">Activity Score: <span id="activity-score">--</span></div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="status-card">
+                    <h3><i class="fas fa-battery-half"></i> Battery</h3>
+                    <div class="status-value" id="battery">--%</div>
+                    <div class="status-label">Estimated Time Remaining</div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="status-card">
+                    <h3><i class="fas fa-tachometer-alt"></i> Speed</h3>
+                    <div class="status-value" id="speed">-- km/h</div>
+                    <div class="status-label">Current Movement Speed</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Health Status and Behavior -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="status-card health-indicator">
+                    <h3>Health Status</h3>
+                    <div class="health-score" id="health-score">--</div>
+                    <div id="health-status-details"></div>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="behavior-card">
+                    <h3>Behavior Analysis</h3>
+                    <div class="behavior-timeline">
+                        <div class="timeline-line"></div>
+                        <div class="timeline-point" data-time="00:00"></div>
+                        <div class="timeline-point" data-time="06:00"></div>
+                        <div class="timeline-point" data-time="12:00"></div>
+                        <div class="timeline-point" data-time="18:00"></div>
+                        <div class="timeline-point" data-time="23:59"></div>
+                    </div>
+                    <div id="behavior-details" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts and Map -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <canvas id="temperatureChart"></canvas>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <canvas id="motionChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <div id="map"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="chart-container">
+                    <canvas id="activityChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerts and Recommendations -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="status-card">
+                    <h3>Active Alerts</h3>
+                    <div class="alert-panel" id="alerts-container"></div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="recommendation-card">
+                    <h3>Recommendations</h3>
+                    <ul class="recommendation-list" id="recommendations-container"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize charts
+        const temperatureChart = new Chart(document.getElementById('temperatureChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Temperature',
+                    data: [],
+                    borderColor: '#f44336',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Temperature History'
+                    }
+                }
+            }
+        });
+
+        const motionChart = new Chart(document.getElementById('motionChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Motion',
+                    data: [],
+                    borderColor: '#2196f3',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Motion Activity'
+                    }
+                }
+            }
+        });
+
+        const activityChart = new Chart(document.getElementById('activityChart').getContext('2d'), {
+            type: 'bar',
+            data: {
+                labels: ['Grazing', 'Resting', 'Moving', 'Other'],
+                datasets: [{
+                    label: 'Activity Distribution',
+                    data: [0, 0, 0, 0],
+                    backgroundColor: [
+                        '#4CAF50',
+                        '#2196f3',
+                        '#ff9800',
+                        '#9e9e9e'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Activity Distribution'
+                    }
+                }
+            }
+        });
+
+        // Initialize map
+        const map = L.map('map').setView([23.0225, 72.5714], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Add geofence circle
+        const geofence = L.circle([23.0225, 72.5714], {
+            color: '#4CAF50',
+            fillColor: '#4CAF50',
+            fillOpacity: 0.2,
+            radius: 1000
+        }).addTo(map);
+
+        // Add safe zones
+        const grazingArea = L.circle([23.0225, 72.5714], {
+            color: '#8bc34a',
+            fillColor: '#8bc34a',
+            fillOpacity: 0.2,
+            radius: 500
+        }).addTo(map);
+
+        const waterSource = L.circle([23.0230, 72.5720], {
+            color: '#2196f3',
+            fillColor: '#2196f3',
+            fillOpacity: 0.2,
+            radius: 100
+        }).addTo(map);
+
+        // Cow marker
+        const cowIcon = L.divIcon({
+            html: '<i class="fas fa-cow" style="font-size: 24px; color: #795548;"></i>',
+            className: 'cow-marker',
+            iconSize: [24, 24]
+        });
+        let cowMarker = L.marker([23.0225, 72.5714], {icon: cowIcon}).addTo(map);
+
+        // ThingSpeak configuration
+        const THINGSPEAK_CHANNEL_ID = "2864424";
+        const THINGSPEAK_API_KEY = "5J2F0XY1N3FO6GZF";
+        const THINGSPEAK_URL = `https://api.thingspeak.com/channels/${THINGSPEAK_CHANNEL_ID}/feeds.json`;
+
+        // Function to process ThingSpeak data
+        function processThingSpeakData(data) {
+            const feeds = data.feeds;
+            if (!feeds || feeds.length === 0) return null;
+
+            const latest = feeds[feeds.length - 1];
+            const historical = feeds.slice(-24); // Last 24 records
+
+            // Process current status
+            const current_status = {
+                temperature: parseFloat(latest.field1) || 0,
+                battery: parseFloat(latest.field2) || 0,
+                latitude: parseFloat(latest.field3) || 23.0225,
+                longitude: parseFloat(latest.field4) || 72.5714,
+                motion_x: parseFloat(latest.field5) || 0,
+                motion_y: parseFloat(latest.field6) || 0,
+                motion_z: parseFloat(latest.field7) || 0,
+                speed: parseFloat(latest.field8) || 0
+            };
+
+            // Calculate motion magnitude
+            current_status.motion_level = Math.sqrt(
+                Math.pow(current_status.motion_x, 2) +
+                Math.pow(current_status.motion_y, 2) +
+                Math.pow(current_status.motion_z, 2)
+            );
+
+            // Calculate activity score (0-100)
+            current_status.activity_score = Math.min(100, (current_status.motion_level / 2.0) * 100);
+
+            // Process historical data
+            const historical_data = historical.map(feed => ({
+                created_at: new Date(feed.created_at),
+                temperature: parseFloat(feed.field1) || 0,
+                battery: parseFloat(feed.field2) || 0,
+                latitude: parseFloat(feed.field3) || 23.0225,
+                longitude: parseFloat(feed.field4) || 72.5714,
+                motion_magnitude: Math.sqrt(
+                    Math.pow(parseFloat(feed.field5) || 0, 2) +
+                    Math.pow(parseFloat(feed.field6) || 0, 2) +
+                    Math.pow(parseFloat(feed.field7) || 0, 2)
+                ),
+                speed: parseFloat(feed.field8) || 0,
+                is_grazing: false,
+                is_resting: false
+            }));
+
+            // Calculate behavior patterns
+            historical_data.forEach(record => {
+                record.is_grazing = record.motion_magnitude > 0.1 && record.motion_magnitude < 0.5;
+                record.is_resting = record.motion_magnitude < 0.1;
+            });
+
+            // Generate health status
+            const health_status = calculateHealthStatus(current_status, historical_data);
+
+            // Generate alerts
+            const alerts = generateAlerts(current_status, historical_data);
+
+            // Generate recommendations
+            const recommendations = generateRecommendations(current_status, health_status);
+
+            return {
+                current_status,
+                historical_data,
+                health_status,
+                alerts,
+                recommendations,
+                behavior_analysis: analyzeBehavior(historical_data)
+            };
+        }
+
+        function calculateHealthStatus(current, historical) {
+            let health_score = 100;
+            
+            // Temperature check (37.5-39.5°C normal range)
+            const temp_normal = current.temperature >= 37.5 && current.temperature <= 39.5;
+            if (!temp_normal) health_score -= 20;
+
+            // Activity check
+            const avg_motion = historical.reduce((sum, record) => sum + record.motion_magnitude, 0) / historical.length;
+            const activity_normal = avg_motion >= 0.1 && avg_motion <= 2.0;
+            if (!activity_normal) health_score -= 15;
+
+            // Rest periods check
+            const rest_periods = historical.filter(record => record.is_resting).length;
+            const rest_ratio = rest_periods / historical.length;
+            if (rest_ratio < 0.2 || rest_ratio > 0.8) health_score -= 10;
+
+            // Grazing periods check
+            const grazing_periods = historical.filter(record => record.is_grazing).length;
+            const grazing_ratio = grazing_periods / historical.length;
+            if (grazing_ratio < 0.3) health_score -= 10;
+
+            // Battery impact
+            if (current.battery < 20) health_score -= 5;
+
+            return {
+                score: Math.max(0, health_score),
+                temperature_status: temp_normal ? 'normal' : 'abnormal',
+                activity_status: activity_normal ? 'normal' : 'abnormal',
+                rest_ratio: rest_ratio,
+                grazing_ratio: grazing_ratio
+            };
+        }
+
+        function generateAlerts(current, historical) {
+            const alerts = [];
+            const timestamp = new Date();
+
+            // Temperature alerts
+            if (current.temperature >= 41.0) {
+                alerts.push({
+                    type: 'CRITICAL_TEMPERATURE',
+                    value: current.temperature,
+                    timestamp: timestamp,
+                    severity: 'critical',
+                    message: 'Temperature critically high! Immediate action required.'
+                });
+            } else if (current.temperature > 39.5) {
+                alerts.push({
+                    type: 'HIGH_TEMPERATURE',
+                    value: current.temperature,
+                    timestamp: timestamp,
+                    severity: 'high',
+                    message: 'Temperature above normal range.'
+                });
+            } else if (current.temperature < 37.5) {
+                alerts.push({
+                    type: 'LOW_TEMPERATURE',
+                    value: current.temperature,
+                    timestamp: timestamp,
+                    severity: 'high',
+                    message: 'Temperature below normal range.'
+                });
+            }
+
+            // Motion alerts
+            if (current.motion_level > 3.0) {
+                alerts.push({
+                    type: 'JUMPING_DETECTED',
+                    value: current.motion_level,
+                    timestamp: timestamp,
+                    severity: 'medium',
+                    message: 'Unusual jumping activity detected.'
+                });
+            } else if (current.motion_level > 2.0) {
+                alerts.push({
+                    type: 'EXCESSIVE_MOTION',
+                    value: current.motion_level,
+                    timestamp: timestamp,
+                    severity: 'medium',
+                    message: 'High activity level detected.'
+                });
+            }
+
+            // Battery alerts
+            if (current.battery <= 10) {
+                alerts.push({
+                    type: 'CRITICAL_BATTERY',
+                    value: current.battery,
+                    timestamp: timestamp,
+                    severity: 'critical',
+                    message: 'Battery critically low! Immediate charging required.'
+                });
+            } else if (current.battery <= 20) {
+                alerts.push({
+                    type: 'LOW_BATTERY',
+                    value: current.battery,
+                    timestamp: timestamp,
+                    severity: 'medium',
+                    message: 'Battery level low.'
+                });
+            }
+
+            return alerts;
+        }
+
+        function generateRecommendations(current, health) {
+            const recommendations = [];
+
+            // Temperature-based recommendations
+            if (current.temperature > 39.5) {
+                recommendations.push({
+                    type: 'COOLING',
+                    priority: 'high',
+                    message: 'High temperature detected',
+                    actions: [
+                        'Move the cow to a shaded area',
+                        'Ensure access to fresh water',
+                        'Consider using cooling measures',
+                        'Monitor for heat stress symptoms'
+                    ]
+                });
+            }
+
+            // Activity-based recommendations
+            if (current.motion_level < 0.1) {
+                recommendations.push({
+                    type: 'ACTIVITY',
+                    priority: 'medium',
+                    message: 'Low activity detected',
+                    actions: [
+                        'Check for signs of illness',
+                        'Evaluate feed quality',
+                        'Consider veterinary check-up',
+                        'Monitor eating patterns'
+                    ]
+                });
+            }
+
+            // Battery-based recommendations
+            if (current.battery < 20) {
+                recommendations.push({
+                    type: 'BATTERY',
+                    priority: 'high',
+                    message: 'Low battery level detected',
+                    actions: [
+                        'Charge device immediately',
+                        'Check charging system',
+                        'Consider backup device',
+                        'Monitor charging pattern'
+                    ]
+                });
+            }
+
+            return recommendations;
+        }
+
+        function analyzeBehavior(historical) {
+            const hourly_activity = {};
+            const hours = Array.from(new Set(historical.map(d => d.created_at.getHours())));
+            
+            hours.forEach(hour => {
+                const records = historical.filter(d => d.created_at.getHours() === hour);
+                hourly_activity[hour] = records.reduce((sum, r) => sum + r.motion_magnitude, 0) / records.length;
+            });
+
+            const peak_hour = Object.entries(hourly_activity)
+                .reduce((a, b) => a[1] > b[1] ? a : b)[0];
+
+            return {
+                hourly_activity,
+                motion_patterns: {
+                    avg_daily_activity: historical.reduce((sum, r) => sum + r.motion_magnitude, 0) / historical.length,
+                    peak_activity_hour: parseInt(peak_hour),
+                    main_grazing_hours: hours.filter(h => hourly_activity[h] > 0.3),
+                    main_rest_hours: hours.filter(h => hourly_activity[h] < 0.1)
+                }
+            };
+        }
+
+        // Function to update dashboard with ThingSpeak data
+        async function updateDashboard() {
+            try {
+                const response = await fetch(`${THINGSPEAK_URL}?api_key=${THINGSPEAK_API_KEY}&results=24`);
+                const rawData = await response.json();
+                const data = processThingSpeakData(rawData);
+
+                if (!data) {
+                    console.error('No data available');
+                    return;
+                }
+
+                // Update status cards
+                document.getElementById('temperature').textContent = `${data.current_status.temperature.toFixed(1)}°C`;
+                document.getElementById('motion').textContent = `${data.current_status.motion_level.toFixed(2)}g`;
+                document.getElementById('battery').textContent = `${data.current_status.battery.toFixed(0)}%`;
+                document.getElementById('speed').textContent = `${data.current_status.speed.toFixed(1)} km/h`;
+                document.getElementById('activity-score').textContent = `${data.current_status.activity_score.toFixed(0)}`;
+
+                // Update health status
+                const healthScore = data.health_status.score;
+                document.getElementById('health-score').textContent = healthScore;
+                document.getElementById('health-score').style.color = 
+                    healthScore >= 80 ? '#4CAF50' :
+                    healthScore >= 60 ? '#ff9800' : '#f44336';
+
+                // Update health details
+                const healthDetails = `
+                    <div>Temperature: ${data.health_status.temperature_status}</div>
+                    <div>Activity: ${data.health_status.activity_status}</div>
+                    <div>Rest Ratio: ${(data.health_status.rest_ratio * 100).toFixed(1)}%</div>
+                    <div>Grazing Ratio: ${(data.health_status.grazing_ratio * 100).toFixed(1)}%</div>
+                `;
+                document.getElementById('health-status-details').innerHTML = healthDetails;
+
+                // Update behavior details
+                const behaviorDetails = `
+                    <div>Peak Activity Hour: ${data.behavior_analysis.motion_patterns.peak_activity_hour}:00</div>
+                    <div>Average Daily Activity: ${data.behavior_analysis.motion_patterns.avg_daily_activity.toFixed(2)}g</div>
+                    <div>Main Grazing Hours: ${data.behavior_analysis.motion_patterns.main_grazing_hours.join(', ')}</div>
+                    <div>Main Rest Hours: ${data.behavior_analysis.motion_patterns.main_rest_hours.join(', ')}</div>
+                `;
+                document.getElementById('behavior-details').innerHTML = behaviorDetails;
+
+                // Update alerts
+                const alertsContainer = document.getElementById('alerts-container');
+                alertsContainer.innerHTML = data.alerts.map(alert => `
+                    <div class="alert-item ${alert.severity}">
+                        <strong>${alert.type}</strong>
+                        <p>${alert.message}</p>
+                        <small>${new Date(alert.timestamp).toLocaleString()}</small>
+                    </div>
+                `).join('');
+
+                // Update recommendations
+                const recommendationsContainer = document.getElementById('recommendations-container');
+                recommendationsContainer.innerHTML = data.recommendations.map(rec => `
+                    <li class="recommendation-item ${rec.priority}">
+                        <strong>${rec.type}</strong>
+                        <p>${rec.message}</p>
+                        <ul>
+                            ${rec.actions.map(action => `<li>${action}</li>`).join('')}
+                        </ul>
+                    </li>
+                `).join('');
+
+                // Update charts
+                const timestamps = data.historical_data.map(d => d.created_at.toLocaleTimeString());
+                const temperatures = data.historical_data.map(d => d.temperature);
+                const motions = data.historical_data.map(d => d.motion_magnitude);
+
+                temperatureChart.data.labels = timestamps;
+                temperatureChart.data.datasets[0].data = temperatures;
+                temperatureChart.update();
+
+                motionChart.data.labels = timestamps;
+                motionChart.data.datasets[0].data = motions;
+                motionChart.update();
+
+                // Update activity distribution
+                const activities = {
+                    grazing: data.historical_data.filter(d => d.is_grazing).length,
+                    resting: data.historical_data.filter(d => d.is_resting).length,
+                    moving: data.historical_data.filter(d => d.motion_magnitude > 0.5).length,
+                    other: data.historical_data.length
+                };
+                activityChart.data.datasets[0].data = [
+                    activities.grazing,
+                    activities.resting,
+                    activities.moving,
+                    activities.other - (activities.grazing + activities.resting + activities.moving)
+                ];
+                activityChart.update();
+
+                // Update cow location
+                const newLatLng = [data.current_status.latitude, data.current_status.longitude];
+                cowMarker.setLatLng(newLatLng);
+                map.panTo(newLatLng);
+
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+            }
+        }
+
+        // Update dashboard every 15 seconds
+        setInterval(updateDashboard, 15000);
+        updateDashboard(); // Initial update
+    </script>
+</body>
+</html> 

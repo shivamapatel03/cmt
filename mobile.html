@@ -1,0 +1,1565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cow Monitor Mobile</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #4CAF50;
+            --danger-color: #f44336;
+            --warning-color: #ff9800;
+            --success-color: #8bc34a;
+            --info-color: #2196f3;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior: none;
+        }
+
+        .mobile-container {
+            padding: 10px;
+            max-width: 100%;
+            margin: 0 auto;
+            overflow-x: hidden;
+        }
+
+        .header {
+            position: sticky;
+            top: 0;
+            background: #fff;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .refresh-button {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .status-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            touch-action: manipulation;
+        }
+
+        .status-card h3 {
+            margin: 0;
+            color: #333;
+            font-size: 1rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+
+        .status-label {
+            color: #666;
+            font-size: 0.8rem;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 200px;
+        }
+
+        #map {
+            height: 250px;
+            border-radius: 15px;
+            touch-action: manipulation;
+        }
+
+        .alert-panel {
+            max-height: 300px;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .alert-item {
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            background: #fff;
+            border-left: 4px solid var(--primary-color);
+            font-size: 0.9rem;
+        }
+
+        .alert-item.critical {
+            border-left-color: var(--danger-color);
+            background: rgba(244, 67, 54, 0.1);
+        }
+
+        .alert-item.high {
+            border-left-color: var(--warning-color);
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        .health-indicator {
+            text-align: center;
+            padding: 15px;
+        }
+
+        .health-score {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+
+        .tab-container {
+            display: flex;
+            gap: 10px;
+            padding: 10px 0;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin-bottom: 15px;
+        }
+
+        .tab-button {
+            background: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            color: #666;
+        }
+
+        .tab-button.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 360px) {
+            .status-value {
+                font-size: 1.5rem;
+            }
+            
+            .chart-container {
+                height: 180px;
+            }
+            
+            #map {
+                height: 200px;
+            }
+        }
+
+        /* Pull to refresh styles */
+        .pull-to-refresh {
+            position: absolute;
+            top: -60px;
+            left: 0;
+            right: 0;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+            color: var(--primary-color);
+            font-size: 0.9rem;
+        }
+
+        /* Notification badge */
+        .notification-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: var(--danger-color);
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Bottom navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #666;
+            text-decoration: none;
+            font-size: 0.8rem;
+            position: relative;
+        }
+
+        .bottom-nav-item.active {
+            color: var(--primary-color);
+        }
+
+        .bottom-nav-item i {
+            font-size: 1.2rem;
+            margin-bottom: 4px;
+        }
+
+        /* Offline banner */
+        .offline-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: var(--warning-color);
+            color: white;
+            padding: 8px;
+            text-align: center;
+            font-size: 0.9rem;
+            transform: translateY(-100%);
+            transition: transform 0.3s;
+            z-index: 2000;
+        }
+
+        .offline-banner.show {
+            transform: translateY(0);
+        }
+
+        /* Quick actions menu */
+        .quick-actions {
+            position: fixed;
+            bottom: 140px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+
+        .action-button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            border: none;
+            font-size: 1.2rem;
+        }
+
+        /* Adjust main container for bottom nav */
+        .mobile-container {
+            padding-bottom: 70px;
+        }
+
+        /* Swipe gesture indicator */
+        .swipe-indicator {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        /* Export menu */
+        .export-menu {
+            position: fixed;
+            bottom: -200px;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 20px;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+            z-index: 1001;
+        }
+
+        .export-menu.show {
+            transform: translateY(-200px);
+        }
+
+        .export-option {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 10px;
+            background: #f5f5f5;
+            cursor: pointer;
+        }
+
+        .export-option i {
+            margin-right: 10px;
+            color: var(--primary-color);
+        }
+
+        /* Enhanced offline indicator */
+        .connection-status {
+            position: fixed;
+            top: 60px;
+            right: 10px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--success-color);
+            transition: background-color 0.3s;
+        }
+
+        .connection-status.offline {
+            background: var(--danger-color);
+        }
+
+        /* Add reminder styles */
+        .reminder-card {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .reminder-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            background: #f5f5f5;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .reminder-time {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .reminder-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .add-reminder-btn {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            z-index: 1000;
+        }
+
+        .reminder-form {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            padding: 20px;
+            border-radius: 20px 20px 0 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            transform: translateY(100%);
+            transition: transform 0.3s;
+            z-index: 1001;
+        }
+
+        .reminder-form.show {
+            transform: translateY(0);
+        }
+
+        .reminder-form input,
+        .reminder-form textarea,
+        .reminder-form select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        .reminder-form button {
+            width: 100%;
+            padding: 12px;
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-top: 10px;
+        }
+
+        /* Dark mode styles */
+        body.dark-mode {
+            background: #1a1a1a;
+            color: #fff;
+        }
+
+        .dark-mode .header {
+            background: #2d2d2d;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .dark-mode .status-card {
+            background: #2d2d2d;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            color: #fff;
+        }
+
+        .dark-mode .status-card h3 {
+            color: #fff;
+        }
+
+        .dark-mode .status-label {
+            color: #aaa;
+        }
+
+        .dark-mode .chart-container {
+            background: #2d2d2d;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .dark-mode .tab-button {
+            background: #2d2d2d;
+            color: #aaa;
+        }
+
+        .dark-mode .tab-button.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .dark-mode .bottom-nav {
+            background: #2d2d2d;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2);
+        }
+
+        .dark-mode .bottom-nav-item {
+            color: #aaa;
+        }
+
+        .dark-mode .bottom-nav-item.active {
+            color: var(--primary-color);
+        }
+
+        .dark-mode .action-button {
+            background: #2d2d2d;
+            color: var(--primary-color);
+        }
+
+        .dark-mode .reminder-item {
+            background: #2d2d2d;
+            border-left-color: var(--primary-color);
+        }
+
+        .dark-mode .reminder-form {
+            background: #2d2d2d;
+        }
+
+        .dark-mode .reminder-form input,
+        .dark-mode .reminder-form textarea,
+        .dark-mode .reminder-form select {
+            background: #1a1a1a;
+            color: #fff;
+            border-color: #444;
+        }
+
+        .dark-mode .alert-item {
+            background: #2d2d2d;
+        }
+
+        .dark-mode .offline-banner {
+            background: #333;
+        }
+
+        .dark-mode .loading-overlay {
+            background: rgba(26, 26, 26, 0.8);
+        }
+
+        /* Dark mode toggle button */
+        .dark-mode-toggle {
+            position: fixed;
+            bottom: 140px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary-color);
+            border: none;
+            font-size: 1.2rem;
+            z-index: 1000;
+        }
+
+        .dark-mode .dark-mode-toggle {
+            background: #2d2d2d;
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Offline banner -->
+    <div class="offline-banner" id="offline-banner">
+        You are currently offline. Data may not be up to date.
+    </div>
+
+    <div class="mobile-container">
+        <div class="header">
+            <h1 style="font-size: 1.2rem; margin: 0;">Cow Monitor</h1>
+            <button class="refresh-button" onclick="manualRefresh()">
+                <i class="fas fa-sync-alt"></i>
+                Refresh
+            </button>
+        </div>
+
+        <div class="tab-container">
+            <button class="tab-button active" onclick="showTab('status')">Status</button>
+            <button class="tab-button" onclick="showTab('health')">Health</button>
+            <button class="tab-button" onclick="showTab('location')">Location</button>
+            <button class="tab-button" onclick="showTab('alerts')">Alerts</button>
+            <button class="tab-button" onclick="showTab('reminders')">Reminders</button>
+        </div>
+
+        <!-- Status Tab -->
+        <div id="status-tab" class="tab-content active">
+            <div class="row g-2">
+                <div class="col-6">
+                    <div class="status-card">
+                        <h3><i class="fas fa-thermometer-half"></i> Temperature</h3>
+                        <div class="status-value" id="temperature">--°C</div>
+                        <div class="status-label">Normal: 37.5-39.5°C</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="status-card">
+                        <h3><i class="fas fa-running"></i> Motion</h3>
+                        <div class="status-value" id="motion">--g</div>
+                        <div class="status-label">Activity: <span id="activity-score">--</span></div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="status-card">
+                        <h3><i class="fas fa-battery-half"></i> Battery</h3>
+                        <div class="status-value" id="battery">--%</div>
+                        <div class="status-label">Remaining</div>
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="status-card">
+                        <h3><i class="fas fa-tachometer-alt"></i> Speed</h3>
+                        <div class="status-value" id="speed">-- km/h</div>
+                        <div class="status-label">Current Speed</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="temperatureChart"></canvas>
+            </div>
+            
+            <div class="chart-container">
+                <canvas id="motionChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Health Tab -->
+        <div id="health-tab" class="tab-content">
+            <div class="status-card health-indicator">
+                <h3>Health Status</h3>
+                <div class="health-score" id="health-score">--</div>
+                <div id="health-status-details"></div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="activityChart"></canvas>
+            </div>
+
+            <div class="status-card">
+                <h3>Behavior Analysis</h3>
+                <div id="behavior-details"></div>
+            </div>
+        </div>
+
+        <!-- Location Tab -->
+        <div id="location-tab" class="tab-content">
+            <div class="chart-container">
+                <div id="map"></div>
+            </div>
+            
+            <div class="status-card">
+                <h3>Location Details</h3>
+                <div id="location-details"></div>
+            </div>
+        </div>
+
+        <!-- Alerts Tab -->
+        <div id="alerts-tab" class="tab-content">
+            <div class="status-card">
+                <h3>Active Alerts</h3>
+                <div class="alert-panel" id="alerts-container"></div>
+            </div>
+
+            <div class="status-card">
+                <h3>Recommendations</h3>
+                <div id="recommendations-container"></div>
+            </div>
+        </div>
+
+        <!-- Reminders Tab -->
+        <div id="reminders-tab" class="tab-content">
+            <div class="status-card">
+                <h3>Daily Reminders</h3>
+                <div id="reminders-container"></div>
+            </div>
+        </div>
+
+        <!-- Add Reminder Button -->
+        <button class="add-reminder-btn" onclick="showReminderForm()" id="add-reminder-btn">
+            <i class="fas fa-plus"></i>
+        </button>
+
+        <!-- Reminder Form -->
+        <div class="reminder-form" id="reminder-form">
+            <h3>Add New Reminder</h3>
+            <input type="text" id="reminder-title" placeholder="Title">
+            <textarea id="reminder-description" placeholder="Description" rows="3"></textarea>
+            <input type="time" id="reminder-time">
+            <select id="reminder-repeat">
+                <option value="daily">Daily</option>
+                <option value="weekdays">Weekdays</option>
+                <option value="weekends">Weekends</option>
+                <option value="custom">Custom</option>
+            </select>
+            <button onclick="saveReminder()">Save Reminder</button>
+            <button onclick="hideReminderForm()" style="background: #666;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Quick actions menu -->
+    <div class="quick-actions">
+        <button class="action-button" onclick="exportToPDF()">
+            <i class="fas fa-file-pdf"></i>
+        </button>
+        <button class="dark-mode-toggle" onclick="toggleDarkMode()">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+
+    <!-- Bottom navigation -->
+    <nav class="bottom-nav">
+        <a href="#" class="bottom-nav-item active" onclick="showTab('status')">
+            <i class="fas fa-chart-line"></i>
+            <span>Status</span>
+        </a>
+        <a href="#" class="bottom-nav-item" onclick="showTab('health')">
+            <i class="fas fa-heartbeat"></i>
+            <span>Health</span>
+            <span class="notification-badge" id="health-notifications">0</span>
+        </a>
+        <a href="#" class="bottom-nav-item" onclick="showTab('location')">
+            <i class="fas fa-map-marker-alt"></i>
+            <span>Location</span>
+        </a>
+        <a href="#" class="bottom-nav-item" onclick="showTab('alerts')">
+            <i class="fas fa-bell"></i>
+            <span>Alerts</span>
+            <span class="notification-badge" id="alert-notifications">0</span>
+        </a>
+        <a href="#" class="bottom-nav-item" onclick="showTab('reminders')">
+            <i class="fas fa-clock"></i>
+            <span>Reminders</span>
+            <span class="notification-badge" id="reminder-notifications">0</span>
+        </a>
+    </nav>
+
+    <!-- Export menu -->
+    <div class="export-menu" id="exportMenu">
+        <h3>Export Data</h3>
+        <div class="export-option" onclick="exportData('pdf')">
+            <i class="fas fa-file-pdf"></i>
+            Export as PDF
+        </div>
+        <div class="export-option" onclick="exportData('csv')">
+            <i class="fas fa-file-csv"></i>
+            Export as CSV
+        </div>
+        <div class="export-option" onclick="exportData('json')">
+            <i class="fas fa-file-code"></i>
+            Export as JSON
+        </div>
+    </div>
+
+    <!-- Connection status indicator -->
+    <div class="connection-status" id="connectionStatus"></div>
+
+    <!-- Swipe indicator -->
+    <div class="swipe-indicator" id="swipeIndicator">Swipe for more</div>
+
+    <script>
+        // Remove ThingSpeak configuration
+        // const THINGSPEAK_CHANNEL_ID = "2864424";
+        // const THINGSPEAK_API_KEY = "5J2F0XY1N3FO6GZF";
+        // const THINGSPEAK_URL = `https://api.thingspeak.com/channels/${THINGSPEAK_CHANNEL_ID}/feeds.json`;
+
+        // Initialize charts with mobile-optimized options
+        const commonChartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        maxRotation: 0,
+                        autoSkip: true,
+                        maxTicksLimit: 6
+                    }
+                }
+            }
+        };
+
+        const temperatureChart = new Chart(document.getElementById('temperatureChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Temperature',
+                    data: [],
+                    borderColor: '#f44336',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                ...commonChartOptions,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Temperature History'
+                    }
+                }
+            }
+        });
+
+        const motionChart = new Chart(document.getElementById('motionChart').getContext('2d'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Motion',
+                    data: [],
+                    borderColor: '#2196f3',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                ...commonChartOptions,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Motion Activity'
+                    }
+                }
+            }
+        });
+
+        const activityChart = new Chart(document.getElementById('activityChart').getContext('2d'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Grazing', 'Resting', 'Moving', 'Other'],
+                datasets: [{
+                    data: [0, 0, 0, 0],
+                    backgroundColor: [
+                        '#4CAF50',
+                        '#2196f3',
+                        '#ff9800',
+                        '#9e9e9e'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            boxWidth: 12,
+                            padding: 10
+                        }
+                    }
+                }
+            }
+        });
+
+        // Initialize map
+        const map = L.map('map').setView([23.0225, 72.5714], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        // Add geofence circle
+        const geofence = L.circle([23.0225, 72.5714], {
+            color: '#4CAF50',
+            fillColor: '#4CAF50',
+            fillOpacity: 0.2,
+            radius: 1000
+        }).addTo(map);
+
+        // Cow marker
+        const cowIcon = L.divIcon({
+            html: '<i class="fas fa-cow" style="font-size: 24px; color: #795548;"></i>',
+            className: 'cow-marker',
+            iconSize: [24, 24]
+        });
+        let cowMarker = L.marker([23.0225, 72.5714], {icon: cowIcon}).addTo(map);
+
+        // Tab functionality
+        function showTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.classList.remove('active');
+            });
+            
+            document.getElementById(`${tabName}-tab`).classList.add('active');
+            document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+            
+            if (tabName === 'location') {
+                map.invalidateSize();
+            }
+
+            // Update bottom navigation
+            document.querySelectorAll('.bottom-nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector(`.bottom-nav-item[onclick="showTab('${tabName}')"]`).classList.add('active');
+        }
+
+        // Show loading overlay
+        function showLoading() {
+            document.querySelector('.loading-overlay').style.display = 'flex';
+        }
+
+        function hideLoading() {
+            document.querySelector('.loading-overlay').style.display = 'none';
+        }
+
+        // Manual refresh function
+        function manualRefresh() {
+            showLoading();
+            updateDashboard();
+            hideLoading();
+        }
+
+        // Initialize dashboard
+        updateDashboard();
+
+        // Static data for the dashboard
+        const staticData = {
+            current_status: {
+                temperature: 38.5,
+                motion_level: 0.8,
+                battery: 85,
+                speed: 2.5,
+                activity_score: 75,
+                latitude: 23.0225,
+                longitude: 72.5714
+            },
+            health_status: {
+                score: 85,
+                temperature_status: "Normal",
+                activity_status: "Active",
+                rest_ratio: 0.3,
+                grazing_ratio: 0.4
+            },
+            behavior_analysis: {
+                motion_patterns: {
+                    peak_activity_hour: 10,
+                    avg_daily_activity: 0.75,
+                    main_grazing_hours: [8, 14, 18],
+                    main_rest_hours: [0, 4, 12]
+                }
+            },
+            alerts: [
+                {
+                    type: "TEMPERATURE",
+                    message: "Temperature is normal",
+                    severity: "normal",
+                    timestamp: new Date()
+                }
+            ],
+            recommendations: [
+                {
+                    message: "Regular monitoring",
+                    priority: "normal",
+                    actions: ["Continue regular checks"]
+                }
+            ],
+            historical_data: Array(24).fill(null).map((_, i) => ({
+                created_at: new Date(Date.now() - i * 3600000),
+                temperature: 38.5 + Math.random(),
+                motion_magnitude: 0.8 + Math.random() * 0.4,
+                is_grazing: Math.random() > 0.5,
+                is_resting: Math.random() > 0.7
+            }))
+        };
+        
+        function updateDashboard() {
+            try {
+                updateDashboardWithData(staticData);
+                updateNotificationBadges(staticData);
+                
+                // Store data in localStorage for offline access
+                localStorage.setItem('lastUpdate', new Date().toISOString());
+                localStorage.setItem('dashboardData', JSON.stringify(staticData));
+            } catch (error) {
+                console.error('Error updating dashboard:', error);
+                showOfflineNotification();
+            }
+        }
+
+        function updateDashboardWithData(data) {
+            try {
+                // Update status values
+                document.getElementById('temperature').textContent = `${data.current_status.temperature.toFixed(1)}°C`;
+                document.getElementById('motion').textContent = `${data.current_status.motion_level.toFixed(2)}g`;
+                document.getElementById('battery').textContent = `${data.current_status.battery.toFixed(0)}%`;
+                document.getElementById('speed').textContent = `${data.current_status.speed.toFixed(1)} km/h`;
+                document.getElementById('activity-score').textContent = `${data.current_status.activity_score.toFixed(0)}`;
+
+                // Update health status
+                const healthScore = data.health_status.score;
+                document.getElementById('health-score').textContent = healthScore;
+                document.getElementById('health-score').style.color = 
+                    healthScore >= 80 ? '#4CAF50' :
+                    healthScore >= 60 ? '#ff9800' : '#f44336';
+
+                // Update health details
+                document.getElementById('health-status-details').innerHTML = `
+                    <div>Temperature: ${data.health_status.temperature_status}</div>
+                    <div>Activity: ${data.health_status.activity_status}</div>
+                    <div>Rest: ${(data.health_status.rest_ratio * 100).toFixed(1)}%</div>
+                    <div>Grazing: ${(data.health_status.grazing_ratio * 100).toFixed(1)}%</div>
+                `;
+
+                // Update behavior details
+                document.getElementById('behavior-details').innerHTML = `
+                    <div>Peak Activity: ${data.behavior_analysis.motion_patterns.peak_activity_hour}:00</div>
+                    <div>Avg Activity: ${data.behavior_analysis.motion_patterns.avg_daily_activity.toFixed(2)}g</div>
+                    <div>Grazing Hours: ${data.behavior_analysis.motion_patterns.main_grazing_hours.join(', ')}</div>
+                    <div>Rest Hours: ${data.behavior_analysis.motion_patterns.main_rest_hours.join(', ')}</div>
+                `;
+
+                // Update location details
+                document.getElementById('location-details').innerHTML = `
+                    <div>Latitude: ${data.current_status.latitude.toFixed(4)}°</div>
+                    <div>Longitude: ${data.current_status.longitude.toFixed(4)}°</div>
+                    <div>Speed: ${data.current_status.speed.toFixed(1)} km/h</div>
+                `;
+
+                // Update alerts
+                document.getElementById('alerts-container').innerHTML = data.alerts.map(alert => `
+                    <div class="alert-item ${alert.severity}">
+                        <strong>${alert.type}</strong>
+                        <p>${alert.message}</p>
+                        <small>${new Date(alert.timestamp).toLocaleString()}</small>
+                    </div>
+                `).join('');
+
+                // Update recommendations
+                document.getElementById('recommendations-container').innerHTML = data.recommendations.map(rec => `
+                    <div class="alert-item ${rec.priority}">
+                        <strong>${rec.message}</strong>
+                        <ul style="margin: 5px 0; padding-left: 20px;">
+                            ${rec.actions.map(action => `<li>${action}</li>`).join('')}
+                        </ul>
+                    </div>
+                `).join('');
+
+                // Update charts
+                const timestamps = data.historical_data.map(d => d.created_at.toLocaleTimeString());
+                const temperatures = data.historical_data.map(d => d.temperature);
+                const motions = data.historical_data.map(d => d.motion_magnitude);
+
+                temperatureChart.data.labels = timestamps;
+                temperatureChart.data.datasets[0].data = temperatures;
+                temperatureChart.update();
+
+                motionChart.data.labels = timestamps;
+                motionChart.data.datasets[0].data = motions;
+                motionChart.update();
+
+                // Update activity distribution
+                const activities = {
+                    grazing: data.historical_data.filter(d => d.is_grazing).length,
+                    resting: data.historical_data.filter(d => d.is_resting).length,
+                    moving: data.historical_data.filter(d => d.motion_magnitude > 0.5).length,
+                    other: data.historical_data.length
+                };
+                activityChart.data.datasets[0].data = [
+                    activities.grazing,
+                    activities.resting,
+                    activities.moving,
+                    activities.other - (activities.grazing + activities.resting + activities.moving)
+                ];
+                activityChart.update();
+
+                // Update map
+                const newLatLng = [data.current_status.latitude, data.current_status.longitude];
+                cowMarker.setLatLng(newLatLng);
+                map.panTo(newLatLng);
+            } catch (error) {
+                console.error('Error updating dashboard with data:', error);
+            }
+        }
+
+        // Offline detection
+        window.addEventListener('online', handleConnectionChange);
+        window.addEventListener('offline', handleConnectionChange);
+
+        function handleConnectionChange() {
+            const banner = document.getElementById('offline-banner');
+            if (!navigator.onLine) {
+                banner.classList.add('show');
+            } else {
+                banner.classList.remove('show');
+                manualRefresh(); // Refresh data when coming back online
+            }
+        }
+
+        // Share functionality
+        async function shareData() {
+            try {
+                const shareData = {
+                    title: 'Cow Monitor Status',
+                    text: `Current Status:\nTemperature: ${document.getElementById('temperature').textContent}\nHealth Score: ${document.getElementById('health-score').textContent}`,
+                    url: window.location.href
+                };
+                await navigator.share(shareData);
+            } catch (err) {
+                console.error('Share failed:', err);
+            }
+        }
+
+        // Dark mode toggle
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+            
+            // Update icon
+            const icon = document.querySelector('.dark-mode-toggle i');
+            if (document.body.classList.contains('dark-mode')) {
+                icon.classList.remove('fa-moon');
+                icon.classList.add('fa-sun');
+            } else {
+                icon.classList.remove('fa-sun');
+                icon.classList.add('fa-moon');
+            }
+
+            // Update charts for better visibility in dark mode
+            const chartOptions = {
+                scales: {
+                    x: {
+                        grid: {
+                            color: document.body.classList.contains('dark-mode') ? '#444' : '#ddd'
+                        },
+                        ticks: {
+                            color: document.body.classList.contains('dark-mode') ? '#aaa' : '#666'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: document.body.classList.contains('dark-mode') ? '#444' : '#ddd'
+                        },
+                        ticks: {
+                            color: document.body.classList.contains('dark-mode') ? '#aaa' : '#666'
+                        }
+                    }
+                }
+            };
+
+            temperatureChart.options.scales = chartOptions.scales;
+            motionChart.options.scales = chartOptions.scales;
+            temperatureChart.update();
+            motionChart.update();
+            activityChart.update();
+        }
+
+        // Initialize dark mode from preference
+        if (localStorage.getItem('darkMode') === 'true' || 
+            window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.body.classList.add('dark-mode');
+            const icon = document.querySelector('.dark-mode-toggle i');
+            icon.classList.remove('fa-moon');
+            icon.classList.add('fa-sun');
+        }
+
+        // Update notification badges
+        function updateNotificationBadges(data) {
+            const healthIssues = data.alerts.filter(alert => 
+                alert.type.includes('TEMPERATURE') || 
+                alert.type.includes('MOTION')
+            ).length;
+            
+            const criticalAlerts = data.alerts.filter(alert => 
+                alert.severity === 'critical'
+            ).length;
+
+            document.getElementById('health-notifications').textContent = healthIssues;
+            document.getElementById('alert-notifications').textContent = criticalAlerts;
+
+            document.getElementById('health-notifications').style.display = 
+                healthIssues > 0 ? 'flex' : 'none';
+            document.getElementById('alert-notifications').style.display = 
+                criticalAlerts > 0 ? 'flex' : 'none';
+        }
+
+        // Add vibration feedback for alerts
+        function vibrateForAlert(severity) {
+            if (!navigator.vibrate) return;
+            
+            switch (severity) {
+                case 'critical':
+                    navigator.vibrate([200, 100, 200]);
+                    break;
+                case 'high':
+                    navigator.vibrate([100, 50, 100]);
+                    break;
+                case 'medium':
+                    navigator.vibrate(100);
+                    break;
+            }
+        }
+
+        // Show offline notification
+        function showOfflineNotification() {
+            const lastUpdate = localStorage.getItem('lastUpdate');
+            if (lastUpdate) {
+                const timeSince = new Date() - new Date(lastUpdate);
+                const minutesAgo = Math.floor(timeSince / 60000);
+                document.getElementById('offline-banner').textContent = 
+                    `You are offline. Last updated ${minutesAgo} minutes ago.`;
+            }
+        }
+
+        // Initialize from cache if available
+        window.addEventListener('load', () => {
+            const cachedData = localStorage.getItem('dashboardData');
+            if (cachedData) {
+                updateDashboardWithData(JSON.parse(cachedData));
+            }
+        });
+
+        // Swipe gesture handling
+        let touchStartX = 0;
+        let touchEndX = 0;
+        const tabs = ['status', 'health', 'location', 'alerts', 'reminders'];
+
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            touchEndX = e.changedTouches[0].clientX;
+            handleSwipe();
+        });
+
+        function handleSwipe() {
+            const swipeDistance = touchEndX - touchStartX;
+            if (Math.abs(swipeDistance) < 50) return;
+
+            const currentTab = document.querySelector('.tab-content.active').id.replace('-tab', '');
+            const currentIndex = tabs.indexOf(currentTab);
+            
+            if (swipeDistance > 0 && currentIndex > 0) {
+                showTab(tabs[currentIndex - 1]);
+            } else if (swipeDistance < 0 && currentIndex < tabs.length - 1) {
+                showTab(tabs[currentIndex + 1]);
+            }
+
+            showSwipeIndicator();
+        }
+
+        function showSwipeIndicator() {
+            const indicator = document.getElementById('swipeIndicator');
+            indicator.style.opacity = '1';
+            setTimeout(() => {
+                indicator.style.opacity = '0';
+            }, 1500);
+        }
+
+        // Enhanced offline capabilities
+        function updateConnectionStatus() {
+            const status = document.getElementById('connectionStatus');
+            status.classList.toggle('offline', !navigator.onLine);
+        }
+
+        window.addEventListener('online', updateConnectionStatus);
+        window.addEventListener('offline', updateConnectionStatus);
+
+        // Data export functionality
+        function exportData(format) {
+            if (!cachedData) return;
+
+            switch (format) {
+                case 'pdf':
+                    exportToPDF();
+                    break;
+                case 'csv':
+                    exportToCSV();
+                    break;
+                case 'json':
+                    exportToJSON();
+                    break;
+            }
+        }
+
+        async function exportToPDF() {
+            showLoading();
+            try {
+                const { jsPDF } = await import('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+                const doc = new jsPDF();
+                
+                doc.text('Cow Monitoring Report', 20, 20);
+                doc.text(`Temperature: ${document.getElementById('temperature').textContent}`, 20, 40);
+                doc.text(`Health Score: ${document.getElementById('health-score').textContent}`, 20, 50);
+                
+                doc.save('cow-monitor-report.pdf');
+            } catch (error) {
+                console.error('PDF export failed:', error);
+            }
+            hideLoading();
+        }
+
+        function exportToCSV() {
+            const data = [
+                ['Timestamp', 'Temperature', 'Motion', 'Battery', 'Speed'],
+                ...cachedData.historical_data.map(d => [
+                    new Date(d.created_at).toLocaleString(),
+                    d.temperature,
+                    d.motion_magnitude,
+                    d.battery,
+                    d.speed
+                ])
+            ];
+
+            const csv = data.map(row => row.join(',')).join('\n');
+            downloadFile(csv, 'cow-monitor-data.csv', 'text/csv');
+        }
+
+        function exportToJSON() {
+            const json = JSON.stringify(cachedData, null, 2);
+            downloadFile(json, 'cow-monitor-data.json', 'application/json');
+        }
+
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            link.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Enhanced data caching
+        function cacheData(data) {
+            cachedData = data;
+            try {
+                const cacheEntry = {
+                    timestamp: new Date().getTime(),
+                    data: data
+                };
+                localStorage.setItem('dashboardData', JSON.stringify(cacheEntry));
+            } catch (error) {
+                console.error('Error caching data:', error);
+            }
+        }
+
+        function loadCachedData() {
+            try {
+                const cacheEntry = JSON.parse(localStorage.getItem('dashboardData'));
+                if (cacheEntry && (new Date().getTime() - cacheEntry.timestamp) < 3600000) {
+                    return cacheEntry.data;
+                }
+            } catch (error) {
+                console.error('Error loading cached data:', error);
+            }
+            return null;
+        }
+
+        // Initialize new features
+        document.addEventListener('DOMContentLoaded', () => {
+            updateConnectionStatus();
+            
+            // Load cached data
+            const data = loadCachedData();
+            if (data) {
+                updateDashboardWithData(data);
+            }
+        });
+
+        // Reminders functionality
+        let reminders = JSON.parse(localStorage.getItem('reminders') || '[]');
+
+        function showReminderForm() {
+            document.getElementById('reminder-form').classList.add('show');
+            document.getElementById('add-reminder-btn').style.display = 'none';
+        }
+
+        function hideReminderForm() {
+            document.getElementById('reminder-form').classList.remove('show');
+            document.getElementById('add-reminder-btn').style.display = 'block';
+        }
+
+        function saveReminder() {
+            const title = document.getElementById('reminder-title').value;
+            const description = document.getElementById('reminder-description').value;
+            const time = document.getElementById('reminder-time').value;
+            const repeat = document.getElementById('reminder-repeat').value;
+
+            if (!title || !time) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            const reminder = {
+                id: Date.now(),
+                title,
+                description,
+                time,
+                repeat,
+                active: true,
+                created: new Date().toISOString()
+            };
+
+            reminders.push(reminder);
+            localStorage.setItem('reminders', JSON.stringify(reminders));
+            
+            scheduleReminder(reminder);
+            updateReminders();
+            hideReminderForm();
+
+            // Clear form
+            document.getElementById('reminder-title').value = '';
+            document.getElementById('reminder-description').value = '';
+            document.getElementById('reminder-time').value = '';
+            document.getElementById('reminder-repeat').value = 'daily';
+        }
+
+        function deleteReminder(id) {
+            reminders = reminders.filter(r => r.id !== id);
+            localStorage.setItem('reminders', JSON.stringify(reminders));
+            updateReminders();
+        }
+
+        function toggleReminder(id) {
+            const reminder = reminders.find(r => r.id === id);
+            if (reminder) {
+                reminder.active = !reminder.active;
+                localStorage.setItem('reminders', JSON.stringify(reminders));
+                updateReminders();
+            }
+        }
+
+        function updateReminders() {
+            const container = document.getElementById('reminders-container');
+            container.innerHTML = reminders.map(reminder => `
+                <div class="reminder-item">
+                    <div>
+                        <h4>${reminder.title}</h4>
+                        <p>${reminder.description}</p>
+                        <div class="reminder-time">
+                            <i class="fas fa-clock"></i> ${reminder.time}
+                            <span class="badge ${reminder.repeat}">${reminder.repeat}</span>
+                        </div>
+                    </div>
+                    <div class="reminder-actions">
+                        <button onclick="toggleReminder(${reminder.id})" 
+                                class="btn btn-sm ${reminder.active ? 'btn-success' : 'btn-secondary'}">
+                            <i class="fas fa-${reminder.active ? 'bell' : 'bell-slash'}"></i>
+                        </button>
+                        <button onclick="deleteReminder(${reminder.id})" class="btn btn-sm btn-danger">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('') || '<p>No reminders set</p>';
+
+            // Update notification badge
+            const activeReminders = reminders.filter(r => r.active).length;
+            document.getElementById('reminder-notifications').textContent = activeReminders;
+            document.getElementById('reminder-notifications').style.display = 
+                activeReminders > 0 ? 'flex' : 'none';
+        }
+
+        function scheduleReminder(reminder) {
+            if (!("Notification" in window)) {
+                console.log("This browser does not support notifications");
+                return;
+            }
+
+            if (Notification.permission === "granted") {
+                setupReminderNotification(reminder);
+            } else if (Notification.permission !== "denied") {
+                Notification.requestPermission().then(function (permission) {
+                    if (permission === "granted") {
+                        setupReminderNotification(reminder);
+                    }
+                });
+            }
+        }
+
+        function setupReminderNotification(reminder) {
+            const [hours, minutes] = reminder.time.split(':');
+            const now = new Date();
+            let reminderTime = new Date();
+            reminderTime.setHours(parseInt(hours));
+            reminderTime.setMinutes(parseInt(minutes));
+            reminderTime.setSeconds(0);
+
+            if (reminderTime < now) {
+                reminderTime.setDate(reminderTime.getDate() + 1);
+            }
+
+            const timeUntilReminder = reminderTime - now;
+
+            setTimeout(() => {
+                if (reminder.active) {
+                    new Notification(reminder.title, {
+                        body: reminder.description,
+                        icon: '/icon.png'
+                    });
+
+                    // Schedule next reminder based on repeat setting
+                    if (reminder.repeat === 'daily') {
+                        setupReminderNotification(reminder);
+                    } else if (reminder.repeat === 'weekdays' && reminderTime.getDay() !== 5) {
+                        setupReminderNotification(reminder);
+                    } else if (reminder.repeat === 'weekends' && reminderTime.getDay() === 5) {
+                        setupReminderNotification(reminder);
+                    }
+                }
+            }, timeUntilReminder);
+        }
+
+        // Initialize reminders
+        document.addEventListener('DOMContentLoaded', () => {
+            updateReminders();
+            reminders.forEach(reminder => {
+                if (reminder.active) {
+                    scheduleReminder(reminder);
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

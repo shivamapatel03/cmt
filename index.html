@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cow Monitoring Tag</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Mobile Navigation Styles */
+        .hamburger {
+            display: none;
+            flex-direction: column;
+            justify-content: space-between;
+            width: 30px;
+            height: 21px;
+            cursor: pointer;
+            z-index: 1002;
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger span {
+            width: 100%;
+            height: 3px;
+            background: #FF1493;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .hamburger.active span:nth-child(1) {
+            transform: translateY(9px) rotate(45deg);
+        }
+
+        .hamburger.active span:nth-child(2) {
+            opacity: 0;
+        }
+
+        .hamburger.active span:nth-child(3) {
+            transform: translateY(-9px) rotate(-45deg);
+        }
+
+        @media (max-width: 768px) {
+            .hamburger {
+                display: flex;
+            }
+
+            .Navbar-menu {
+                position: fixed;
+                top: 0;
+                right: -100%;
+                width: 250px;
+                height: 100vh;
+                background: rgba(255, 255, 255, 0.98);
+                padding: 80px 20px 20px;
+                transition: all 0.4s ease;
+                box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+                backdrop-filter: blur(10px);
+                z-index: 1001;
+            }
+
+            .Navbar-menu.active {
+                right: 0;
+            }
+
+            .Navbar-menu ul {
+                flex-direction: column;
+                gap: 2rem;
+            }
+
+            .Navbar-menu li a {
+                color: #333;
+                font-size: 1.1rem;
+                display: block;
+                padding: 10px 15px;
+                border-radius: 8px;
+                transition: all 0.3s ease;
+            }
+
+            .Navbar-menu li a:hover {
+                background: rgba(255, 20, 147, 0.1);
+                transform: translateX(5px);
+            }
+
+            .Navbar-menu li a.btn-primary {
+                background: linear-gradient(45deg, #FF1493, #FF4500);
+                color: white;
+                text-align: center;
+                transform: none;
+                margin-top: 1rem;
+            }
+
+            .Navbar-menu li a.btn-primary:hover {
+                background: linear-gradient(45deg, #FF4500, #FF1493);
+                transform: translateY(-3px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-screen">
+        <div class="loading-content">
+            <div class="loading-sun"></div>
+            <div class="loading-text">Good Morning!</div>
+        </div>
+    </div>
+    <section class="front-section">
+        <div class="Navbar">
+            <div class="Navbar-logo">
+                Team_7961
+            </div>
+            <div class="hamburger" onclick="toggleMenu()">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div class="Navbar-menu">
+                <ul>
+                    <li><a href="#new-features">Features</a></li>
+                    <li><a href="#about-tag">About TAG</a></li>
+                    <li><a href="#team-section">Team</a></li>
+                    <li><a href="#vision-section">Vision</a></li>
+                    <li><a class="btn-primary" href="dashboard.html">Dashboard</a></li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <section class="new-features" id="new-features">
+        <div class="features-wrapper">
+            <h2 class="section-title">Discover Our Features</h2>
+            <div class="features-container">
+                <div class="feature-card">
+                    <div class="card-icon">
+                        <img src="images/1.png" alt="Morning Boost">
+                    </div>
+                    <h3>Morning Boost</h3>
+                    <p>Start your day with energy and positivity</p>
+                </div>
+                <div class="feature-card">
+                    <div class="card-icon">
+                        <img src="images/2.png" alt="Daily Goals">
+                    </div>
+                    <h3>Daily Goals</h3>
+                    <p>Set and achieve your daily objectives</p>
+                </div>
+                <div class="feature-card">
+                    <div class="card-icon">
+                        <img src="images/3.png" alt="Progress Tracking">
+                    </div>
+                    <h3>Progress Tracking</h3>
+                    <p>Monitor your growth and success</p>
+                </div>
+                <div class="feature-card">
+                    <div class="card-icon">
+                        <img src="images/4.png" alt="Sunrise Mode">
+                    </div>
+                    <h3>Sunrise Mode</h3>
+                    <p>Experience the power of morning routines</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="about-tag" id="about-tag">
+        <div class="about-wrapper">
+            <h2 class="section-title">About TAG System</h2>
+            <div class="tag-components">
+                <div class="tag-component">
+                    <h3>GPS Module</h3>
+                    <p>Advanced GPS tracking system for precise location monitoring of your cattle</p>
+                </div>
+                <div class="tag-component">
+                    <h3>Health Sensors</h3>
+                    <p>Real-time monitoring of vital signs and health metrics</p>
+                </div>
+                <div class="tag-component">
+                    <h3>Battery System</h3>
+                    <p>Long-lasting battery with solar charging capability</p>
+                </div>
+                <div class="tag-component">
+                    <h3>Data Transmitter</h3>
+                    <p>Secure wireless data transmission to your dashboard</p>
+                </div>
+            </div>
+            <div class="tag-benefits">
+                <div class="benefit-card">
+                    <h3>Smart Monitoring</h3>
+                    <p>Track your cattle's location, health, and behavior in real-time</p>
+                </div>
+                <div class="benefit-card">
+                    <h3>Early Warning</h3>
+                    <p>Receive alerts for unusual behavior or health issues</p>
+                </div>
+                <div class="benefit-card">
+                    <h3>Data Analytics</h3>
+                    <p>Access detailed insights and reports for better management</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="team-section" id="team-section">
+        <div class="team-wrapper">
+            <h2 class="section-title">Meet Our Team</h2>
+            <div class="team-grid">
+                <div class="team-member">
+                    <div class="member-image">
+                        <img src="images/team/shivam.jpg" alt="Shivam Patel">
+                    </div>
+                    <h3>Shivam Patel</h3>
+                    <p class="education">B.E. Information Technology</p>
+                </div>
+                <div class="team-member">
+                    <div class="member-image">
+                        <img src="images/team/pramukh.jpg" alt="Pramukh Prajapati">
+                    </div>
+                    <h3>Pramukh Prajapati</h3>
+                    <p class="education">B.E. Information Technology</p>
+                </div>
+                <div class="team-member">
+                    <div class="member-image">
+                        <img src="images/team/aesha.jpg" alt="Aesha Patel">
+                    </div>
+                    <h3>Aesha Patel</h3>
+                    <p class="education">B.E. Information Technology</p>
+                </div>
+                <div class="team-member">
+                    <div class="member-image">
+                        <img src="images/team/prapti.jpg" alt="Prapti Amin">
+                    </div>
+                    <h3>Prapti Amin</h3>
+                    <p class="education">B.E. Information Technology</p>
+                </div>
+                <div class="team-member">
+                    <div class="member-image">
+                        <img src="images/team/naziya.jpg" alt="Naziya Vahora">
+                    </div>
+                    <h3>Naziya Vahora</h3>
+                    <p class="education">B.E. Information Technology</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="vision-section" id="vision-section">
+        <div class="vision-wrapper">
+            <h2 class="section-title">Our Vision</h2>
+            <div class="vision-content">
+                <div class="vision-3d">
+                    <div class="robot-model">
+                        <div class="robot-part robot-head">
+                            <div class="robot-eye left"></div>
+                            <div class="robot-eye right"></div>
+                        </div>s
+                        <div class="robot-part robot-body"></div>
+                        <div class="robot-part robot-arm left"></div>
+                        <div class="robot-part robot-arm right"></div>
+                        <div class="robot-part robot-leg left"></div>
+                        <div class="robot-part robot-leg right"></div>
+                        <div class="tag-on-robot"></div>
+                    </div>
+                    <div class="tag-model">
+                        <div class="tag-face front"></div>
+                        <div class="tag-face back"></div>
+                        <div class="tag-face left"></div>
+                        <div class="tag-face right"></div>
+                        <div class="tag-face top"></div>
+                        <div class="tag-face bottom"></div>
+                        <div class="tag-signal"></div>
+                    </div>
+                </div>
+                <div class="vision-cards">
+                    <div class="vision-card">
+                        <h3>Smart Agriculture</h3>
+                        <p>Revolutionizing cattle management through advanced IoT technology and real-time monitoring systems.</p>
+                    </div>
+                    <div class="vision-card">
+                        <h3>Sustainable Future</h3>
+                        <p>Creating eco-friendly solutions with solar-powered devices and efficient resource management.</p>
+                    </div>
+                    <div class="vision-card">
+                        <h3>Global Impact</h3>
+                        <p>Empowering farmers worldwide with accessible and innovative livestock management tools.</p>
+                    </div>
+                    <div class="vision-card">
+                        <h3>Data-Driven Decisions</h3>
+                        <p>Enabling informed decision-making through advanced analytics and predictive insights.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="footer-section">
+        <div class="footer-wrapper">
+            <div class="footer-content">
+                <div class="footer-grid">
+                    <div class="footer-column">
+                        <h3>Key Points</h3>
+                        <ul>
+                            <li>Real-time cattle monitoring</li>
+                            <li>Solar-powered technology</li>
+                            <li>Advanced GPS tracking</li>
+                            <li>Health monitoring sensors</li>
+                            <li>Data analytics dashboard</li>
+                        </ul>
+                    </div>
+                    <div class="footer-column">
+                        <h3>Quick Links</h3>
+                        <ul>
+                            <li><a href="#new-features">Features</a></li>
+                            <li><a href="#about-tag">About TAG</a></li>
+                            <li><a href="#team-section">Team</a></li>
+                            <li><a href="#vision-section">Vision</a></li>
+                            <li><a href="dashboard.html">Dashboard</a></li>
+                        </ul>
+                    </div>
+                    <div class="footer-column">
+                        <h3>Contact Us</h3>
+                        <ul>
+                            <li>Email: shivampatel.aws@gmail.com</li>
+                            <li>Phone: +91 8799429307</li>
+                            <li>Address: Gujarat, India</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p>&copy; 2025 Team_7961. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+    <script>
+        // Add this at the beginning of your script section
+        function toggleMenu() {
+            const hamburger = document.querySelector('.hamburger');
+            const navMenu = document.querySelector('.Navbar-menu');
+            hamburger.classList.toggle('active');
+            navMenu.classList.toggle('active');
+        }
+
+        // Close menu when clicking on a link
+        document.querySelectorAll('.Navbar-menu a').forEach(link => {
+            link.addEventListener('click', () => {
+                const hamburger = document.querySelector('.hamburger');
+                const navMenu = document.querySelector('.Navbar-menu');
+                hamburger.classList.remove('active');
+                navMenu.classList.remove('active');
+            });
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const hamburger = document.querySelector('.hamburger');
+            const navMenu = document.querySelector('.Navbar-menu');
+            if (!hamburger.contains(e.target) && !navMenu.contains(e.target) && navMenu.classList.contains('active')) {
+                hamburger.classList.remove('active');
+                navMenu.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>
